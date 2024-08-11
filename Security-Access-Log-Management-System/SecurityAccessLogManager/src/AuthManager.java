@@ -45,7 +45,25 @@ public class AuthManager {
             throw new RuntimeException(ex); 
         }
     }
-    
+    public static String getUserRole(String username) {
+        String role = null;
+        String sql = "SELECT role FROM Users WHERE username = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, username);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                role = rs.getString("role");
+            }
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+
+        return role;
+    }
     public static boolean authenticateUser(String username, String password) {
         String hashedPassword = hashPassword(password);
         String sql = "SELECT * FROM Users WHERE username = ? AND password = ?";
