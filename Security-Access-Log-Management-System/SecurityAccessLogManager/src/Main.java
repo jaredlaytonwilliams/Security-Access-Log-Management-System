@@ -15,18 +15,12 @@ public class Main {
         System.out.print("Enter password for registration: ");
         String password = scanner.nextLine();
 
-        String role;
-        while (true) {
-            System.out.print("Enter role for registration (User or Admin): ");
-            role = scanner.nextLine().trim().toLowerCase();
-
-            if (role.equals("user") || role.equals("admin")) {
-                // Capitalize the first letter to store in a consistent format
-                role = role.substring(0, 1).toUpperCase() + role.substring(1);
-                break;
-            } else {
-                System.out.println("Invalid role entered. Please enter either 'User' or 'Admin'.");
-            }
+        System.out.print("Enter role for registration (User or Admin): ");
+        String role = scanner.nextLine();
+        // Ensure role is either "User" or "Admin"
+        while (!role.equalsIgnoreCase("User") && !role.equalsIgnoreCase("Admin")) {
+            System.out.print("Invalid role. Enter 'User' or 'Admin': ");
+            role = scanner.nextLine();
         }
 
         AuthManager.registerUser(username, password, role);
@@ -42,7 +36,22 @@ public class Main {
         boolean isAuthenticated = AuthManager.authenticateUser(authUsername, authPassword);
 
         if (isAuthenticated) {
-            System.out.println("Access granted");
+            String userRole = AuthManager.getUserRole(authUsername);
+
+            System.out.println("Access granted. Your role: " + userRole);
+
+            // Simulate access control based on role
+            if (userRole.equalsIgnoreCase("Admin")) {
+                // Admin has access to everything
+                System.out.println("Welcome, Admin! You have full access to the system.");
+                // Admin specific actions can be added here
+                // For example: manageUsers(), viewAllLogs()
+            } else if (userRole.equalsIgnoreCase("User")) {
+                // User has limited access
+                System.out.println("Welcome, User! You have limited access to the system.");
+                // User specific actions can be added here
+                // For example: viewOwnLogs(), changePassword()
+            }
         } else {
             System.out.println("Access denied");
         }
