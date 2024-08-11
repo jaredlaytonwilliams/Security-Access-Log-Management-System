@@ -1,8 +1,9 @@
 {
     "java.project.sourcePaths": [
-        "SecurityAccessLogManager/src"
+        "SecurityAccessLogManager\\src"
     ],
     "java.project.referencedLibraries": [
-        "SecurityAccessLogManager/lib/sqlite-jdbc-3.46.0.1.jar"
+        "SecurityAccessLogManager\\lib\\slf4j-api-1.7.36.jar",
+        "SecurityAccessLogManager\\lib\\sqlite-jdbc-3.46.0.1.jar"
     ]
 }

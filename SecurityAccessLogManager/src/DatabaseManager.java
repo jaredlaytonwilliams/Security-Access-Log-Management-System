@@ -1,5 +1,7 @@
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.Statement;
 
 public class DatabaseManager {
@@ -36,6 +38,40 @@ public class DatabaseManager {
             stmt.execute(usersTable);
             stmt.execute(accessLogsTable);
             System.out.println("Tables created successfully");
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public static void logAccessEvent(int userId, String status) {
+        String sql = "INSERT INTO AccessLogs(user_id, status) VALUES(?, ?)";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, userId);
+            pstmt.setString(2, status);
+            pstmt.executeUpdate();
+            System.out.println("Access event logged successfully");
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+    public static void displayAccessLogs() {
+        String sql = "SELECT * FROM AccessLogs";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                System.out.println("ID: " + rs.getInt("id") +
+                                   ", User ID: " + rs.getInt("user_id") +
+                                   ", Access Time: " + rs.getString("access_time") +
+                                   ", Status: " + rs.getString("status"));
+            }
+
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
