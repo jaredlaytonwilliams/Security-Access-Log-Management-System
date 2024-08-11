@@ -2,6 +2,7 @@ import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 public class AuthManager {
 
@@ -42,6 +43,34 @@ public class AuthManager {
 
         } catch (Exception ex) {
             throw new RuntimeException(ex);
+        }
+    }
+
+    // Method to authenticate a user
+    public static boolean authenticateUser(String username, String password) {
+        String hashedPassword = hashPassword(password);
+        String sql = "SELECT * FROM Users WHERE username = ? AND password = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, username);
+            pstmt.setString(2, hashedPassword);
+
+            ResultSet rs = pstmt.executeQuery();
+
+            // If a record is found, authentication is successful
+            if (rs.next()) {
+                System.out.println("User authenticated successfully");
+                return true;
+            } else {
+                System.out.println("Authentication failed");
+                return false;
+            }
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return false;
         }
     }
 }
