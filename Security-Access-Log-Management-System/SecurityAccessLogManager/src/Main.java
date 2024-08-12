@@ -8,52 +8,59 @@ public class Main {
 
         Scanner scanner = new Scanner(System.in);
 
-        // Register a new user
-        System.out.print("Enter username for registration: ");
-        String username = scanner.nextLine();
+        // Ask the user if they want to register or login
+        System.out.println("Do you want to (1) Register or (2) Login?");
+        int choice = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
 
-        System.out.print("Enter password for registration: ");
-        String password = scanner.nextLine();
+        if (choice == 1) {
+            // User registration process
+            System.out.print("Enter username for registration: ");
+            String username = scanner.nextLine();
 
-        System.out.print("Enter role for registration (User or Admin): ");
-        String role = scanner.nextLine();
-        // Ensure role is either "User" or "Admin"
-        while (!role.equalsIgnoreCase("User") && !role.equalsIgnoreCase("Admin")) {
-            System.out.print("Invalid role. Enter 'User' or 'Admin': ");
-            role = scanner.nextLine();
-        }
+            System.out.print("Enter password for registration: ");
+            String password = scanner.nextLine();
 
-        AuthManager.registerUser(username, password, role);
-        System.out.println("User registered successfully!");
+            System.out.print("Enter role for registration (User or Admin): ");
+            String role = scanner.nextLine();
 
-        // Authenticate the user
-        System.out.print("Enter username for authentication: ");
-        String authUsername = scanner.nextLine();
+            AuthManager.registerUser(username, password, role);
+            System.out.println("Registration successful. You can now log in.");
 
-        System.out.print("Enter password for authentication: ");
-        String authPassword = scanner.nextLine();
+        } else if (choice == 2) {
+            // User login process
+            System.out.print("Enter username: ");
+            String username = scanner.nextLine();
 
-        boolean isAuthenticated = AuthManager.authenticateUser(authUsername, authPassword);
+            System.out.print("Enter password: ");
+            String password = scanner.nextLine();
 
-        if (isAuthenticated) {
-            String userRole = AuthManager.getUserRole(authUsername);
+            // Authenticate user and retrieve their role
+            String role = AuthManager.authenticateUser(username, password);
 
-            System.out.println("Access granted. Your role: " + userRole);
+            if (role != null) {
+                System.out.println("Access granted. Role: " + role);
 
-            // Simulate access control based on role
-            if (userRole.equalsIgnoreCase("Admin")) {
-                // Admin has access to everything
-                System.out.println("Welcome, Admin! You have full access to the system.");
-                // Admin specific actions can be added here
-                // For example: manageUsers(), viewAllLogs()
-            } else if (userRole.equalsIgnoreCase("User")) {
-                // User has limited access
-                System.out.println("Welcome, User! You have limited access to the system.");
-                // User specific actions can be added here
-                // For example: viewOwnLogs(), changePassword()
+                // Role-Based Access Control (RBAC)
+                if (role.equalsIgnoreCase("Admin")) {
+                    System.out.println("Admin Access: You can view logs and manage users.");
+
+                    // Add code here for admin features like viewing logs, managing users, etc.
+
+                } else if (role.equalsIgnoreCase("User")) {
+                    System.out.println("User Access: Limited access to certain features.");
+
+                    // Add code here for user features, restricted access
+
+                } else {
+                    System.out.println("Unknown role. Access restricted.");
+                }
+
+            } else {
+                System.out.println("Access denied. Invalid username or password.");
             }
         } else {
-            System.out.println("Access denied");
+            System.out.println("Invalid choice. Exiting.");
         }
 
         scanner.close();
