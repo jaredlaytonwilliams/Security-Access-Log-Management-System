@@ -1,3 +1,4 @@
+import java.util.InputMismatchException;
 import java.util.Scanner;
 
 public class Main {
@@ -7,26 +8,46 @@ public class Main {
         DatabaseManager.createTables();
 
         Scanner scanner = new Scanner(System.in);
+        int choice = 0;
 
-        // Ask the user if they want to register or login
-        System.out.println("Do you want to (1) Register or (2) Login?");
-        int choice = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        while (true) {
+            System.out.println("Do you want to (1) Register or (2) Login?");
+            try {
+                choice = scanner.nextInt();
+                scanner.nextLine(); // Clear the buffer
+
+                if (choice == 1 || choice == 2) {
+                    break; // Exit the loop if a valid choice is made
+                } else {
+                    System.out.println("Invalid choice. Please enter 1 or 2.");
+                }
+            } catch (InputMismatchException e) {
+                System.out.println("Invalid input. Please enter a number.");
+                scanner.nextLine(); // Clear the buffer
+            }
+        }
 
         if (choice == 1) {
-            // User registration process
+            // Register a new user
             System.out.print("Enter username for registration: ");
             String username = scanner.nextLine();
 
             System.out.print("Enter password for registration: ");
             String password = scanner.nextLine();
 
-            System.out.print("Enter role for registration (User or Admin): ");
-            String role = scanner.nextLine();
+            String role;
+            while (true) {
+                System.out.print("Enter role for registration (User or Admin): ");
+                role = scanner.nextLine();
+
+                if (role.equalsIgnoreCase("User") || role.equalsIgnoreCase("Admin")) {
+                    break; // Valid role entered, exit loop
+                } else {
+                    System.out.println("Invalid role. Please enter 'User' or 'Admin'.");
+                }
+            }
 
             AuthManager.registerUser(username, password, role);
-            System.out.println("Registration successful. You can now log in.");
-
         } else if (choice == 2) {
             // User login process
             System.out.print("Enter username: ");
@@ -59,8 +80,6 @@ public class Main {
             } else {
                 System.out.println("Access denied. Invalid username or password.");
             }
-        } else {
-            System.out.println("Invalid choice. Exiting.");
         }
 
         scanner.close();
