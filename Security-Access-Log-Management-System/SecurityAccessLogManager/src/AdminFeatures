@@ -1,0 +1,32 @@
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+
+
+public class AdminFeatures {
+
+    private static final String DB_URL = "jdbc:sqlite:database/security_logs.db";
+
+    public static void viewAllLogs() {
+        String sql = "SELECT * FROM AccessLogs";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                System.out.println("Log ID: " + rs.getInt("id"));
+                System.out.println("User ID: " + rs.getInt("user_id"));
+                System.out.println("Access Time: " + rs.getString("access_time"));
+                System.out.println("Status: " + rs.getString("status"));
+                System.out.println("----------------------------");
+            }
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    // Additional admin features like managing users can be added here
+}
