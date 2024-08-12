@@ -62,8 +62,28 @@ public class AuthManager {
         }
     }
 
+    public static int getUserId(String username) {
+        String sql = "SELECT id FROM Users WHERE username = ?";
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            ResultSet rs = pstmt.executeQuery();
+    
+            if (rs.next()) {
+                return rs.getInt("id");
+            } else {
+                return -1; // User not found
+            }
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return -1;
+        }
+    }
+    
+    
+    
     // Simple method to hash passwords using SHA-256
-    private static String hashPassword(String password) {
+    public static String hashPassword(String password) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(password.getBytes("UTF-8"));
