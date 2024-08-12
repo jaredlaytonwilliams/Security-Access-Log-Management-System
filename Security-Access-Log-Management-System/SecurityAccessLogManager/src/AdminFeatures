@@ -7,6 +7,7 @@ public class AdminFeatures {
 
     private static final String DB_URL = "jdbc:sqlite:database/security_logs.db";
 
+    // Method to view all access logs
     public static void viewAllLogs() {
         String sql = "SELECT * FROM AccessLogs";
 
@@ -19,6 +20,8 @@ public class AdminFeatures {
                 System.out.println("User ID: " + rs.getInt("user_id"));
                 System.out.println("Access Time: " + rs.getString("access_time"));
                 System.out.println("Status: " + rs.getString("status"));
+                System.out.println("Action: " + rs.getString("action"));
+                System.out.println("IP Address: " + rs.getString("ip_address"));
                 System.out.println("----------------------------");
             }
 
@@ -27,6 +30,7 @@ public class AdminFeatures {
         }
     }
 
+    // Method to delete a user by username
     public static boolean deleteUser(String username) {
         String sql = "DELETE FROM Users WHERE username = ?";
 
@@ -44,6 +48,7 @@ public class AdminFeatures {
         }
     }
 
+    // Method to view all users
     public static void viewAllUsers() {
         String sql = "SELECT * FROM Users";
 
@@ -60,6 +65,43 @@ public class AdminFeatures {
 
         } catch (Exception e) {
             System.out.println(e.getMessage());
+        }
+    }
+
+    // Method to add a new user
+    public static void addUser(String username, String password, String role) {
+        String sql = "INSERT INTO Users(username, password, role) VALUES(?, ?, ?)";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, username);
+            pstmt.setString(2, AuthManager.hashPassword(password)); // Assuming AuthManager has a method to hash passwords
+            pstmt.setString(3, role);
+            pstmt.executeUpdate();
+            System.out.println("User added successfully");
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    // Method to update a user's role
+    public static boolean updateUserRole(String username, String newRole) {
+        String sql = "UPDATE Users SET role = ? WHERE username = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, newRole);
+            pstmt.setString(2, username);
+            int rowsAffected = pstmt.executeUpdate();
+
+            return rowsAffected > 0;
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return false;
         }
     }
 }
