@@ -3,7 +3,6 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
-
 public class AdminFeatures {
 
     private static final String DB_URL = "jdbc:sqlite:database/security_logs.db";
@@ -28,5 +27,39 @@ public class AdminFeatures {
         }
     }
 
-    // Additional admin features like managing users can be added here
+    public static boolean deleteUser(String username) {
+        String sql = "DELETE FROM Users WHERE username = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, username);
+            int rowsAffected = pstmt.executeUpdate();
+
+            return rowsAffected > 0;
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return false;
+        }
+    }
+
+    public static void viewAllUsers() {
+        String sql = "SELECT * FROM Users";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                System.out.println("User ID: " + rs.getInt("id"));
+                System.out.println("Username: " + rs.getString("username"));
+                System.out.println("Role: " + rs.getString("role"));
+                System.out.println("----------------------------");
+            }
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
 }
