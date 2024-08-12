@@ -1,13 +1,8 @@
-import java.io.File;
-import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.sql.SQLException;
 
 public class AdminFeatures {
 
@@ -22,13 +17,7 @@ public class AdminFeatures {
              ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
-                System.out.println("Log ID: " + rs.getInt("id"));
-                System.out.println("User ID: " + rs.getInt("user_id"));
-                System.out.println("Access Time: " + rs.getString("access_time"));
-                System.out.println("Status: " + rs.getString("status"));
-                System.out.println("Action: " + rs.getString("action"));
-                System.out.println("IP Address: " + rs.getString("ip_address"));
-                System.out.println("----------------------------");
+                displayLog(rs);
             }
 
         } catch (Exception e) {
@@ -111,110 +100,142 @@ public class AdminFeatures {
         }
     }
 
-    public static List<Map<String, String>> filterLogsByDate(String startDate, String endDate) {
-    String sql = "SELECT * FROM AccessLogs WHERE access_time BETWEEN ? AND ?";
-    List<Map<String, String>> resultList = new ArrayList<>();
+    // Filter logs by user
+    public static void filterLogsByUser(String username) {
+        String sql = "SELECT * FROM AccessLogs WHERE user_id = (SELECT id FROM Users WHERE username = ?)";
 
-    try (Connection conn = DriverManager.getConnection(DB_URL);
-         PreparedStatement pstmt = conn.prepareStatement(sql)) {
-        pstmt.setString(1, startDate);
-        pstmt.setString(2, endDate);
-        ResultSet rs = pstmt.executeQuery();
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            ResultSet rs = pstmt.executeQuery();
 
-        // Store rows in the list
-        while (rs.next()) {
-            Map<String, String> row = new HashMap<>();
-            row.put("id", String.valueOf(rs.getInt("id")));
-            row.put("user_id", String.valueOf(rs.getInt("user_id")));
-            row.put("access_time", rs.getString("access_time"));
-            row.put("status", rs.getString("status"));
-            row.put("action", rs.getString("action"));
-            row.put("ip_address", rs.getString("ip_address"));
-            resultList.add(row);
+            if (!rs.isBeforeFirst()) {
+                System.out.println("No logs found for the user: " + username);
+            }
+
+            while (rs.next()) {
+                displayLog(rs);
+            }
+
+        } catch (Exception e) {
+            System.out.println("Error filtering logs by user: " + e.getMessage());
         }
-
-        System.out.println("Rows found: " + resultList.size());
-    } catch (Exception e) {
-        System.out.println("Error filtering logs by date: " + e.getMessage());
     }
 
-    return resultList;
-}
+    // Filter logs by action type
+    public static void filterLogsByActionType(String action) {
+        String sql = "SELECT * FROM AccessLogs WHERE action = ?";
 
-    
-    
-    
-    
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, action);
+            ResultSet rs = pstmt.executeQuery();
 
-    public static void generateReportByDate(String startDate, String endDate) {
+            if (!rs.isBeforeFirst()) {
+                System.out.println("No logs found for the action type: " + action);
+            }
+
+            while (rs.next()) {
+                displayLog(rs);
+            }
+
+        } catch (Exception e) {
+            System.out.println("Error filtering logs by action type: " + e.getMessage());
+        }
+    }
+    public static void displayLoginStatistics() {
+        String sql = "SELECT COUNT(*) AS login_count, DATE(access_time) AS login_date " +
+                     "FROM AccessLogs WHERE action = 'Login' AND status = 'Success' " +
+                     "GROUP BY login_date ORDER BY login_date DESC";
+    
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+    
+            while (rs.next()) {
+                System.out.println("Date: " + rs.getString("login_date") + 
+                                   " - Successful Logins: " + rs.getInt("login_count"));
+            }
+    
+        } catch (Exception e) {
+            System.out.println("Error displaying login statistics: " + e.getMessage());
+        }
+    }
+    
+    public static void displayMostActiveUsers() {
+        String sql = "SELECT Users.username, COUNT(*) AS login_count " +
+                     "FROM AccessLogs " +
+                     "JOIN Users ON AccessLogs.user_id = Users.id " +
+                     "WHERE action = 'Login' AND status = 'Success' " +
+                     "GROUP BY Users.username ORDER BY login_count DESC";
+    
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+    
+            System.out.println("Most Active Users:");
+            System.out.println("---------------------------");
+            while (rs.next()) {
+                System.out.println("Username: " + rs.getString("username") + 
+                                   " - Successful Logins: " + rs.getInt("login_count"));
+            }
+            System.out.println("---------------------------");
+    
+        } catch (Exception e) {
+            System.out.println("Error displaying most active users: " + e.getMessage());
+        }
+    }
+    
+    public static void filterLogsByDate(String startDate, String endDate) {
         String sql = "SELECT * FROM AccessLogs WHERE access_time BETWEEN ? AND ?";
-        
         try (Connection conn = DriverManager.getConnection(DB_URL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, startDate);
             pstmt.setString(2, endDate);
             ResultSet rs = pstmt.executeQuery();
-            
-            boolean hasData = false;
-            while (rs.next()) {
-                hasData = true;
-                System.out.println("Log ID: " + rs.getInt("id"));
-                System.out.println("User ID: " + rs.getInt("user_id"));
-                System.out.println("Access Time: " + rs.getString("access_time"));
-                System.out.println("Status: " + rs.getString("status"));
-                System.out.println("Action: " + rs.getString("action"));
-                System.out.println("IP Address: " + rs.getString("ip_address"));
-                System.out.println("----------------------------");
-            }
-            
-            if (!hasData) {
+    
+            if (!rs.isBeforeFirst()) {
                 System.out.println("No logs found for the given date range.");
             }
-        } catch (Exception e) {
-            System.out.println("Error generating report: " + e.getMessage());
-        }
-    }
     
-    
-
-    
-    public static void exportReportToCSV(String filename, ResultSet rs) {
-        try (PrintWriter writer = new PrintWriter(new File(filename))) {
-            writer.println("Log ID,User ID,Access Time,Status,Action,IP Address");
-            
             while (rs.next()) {
-                writer.println(rs.getInt("id") + "," +
-                               rs.getInt("user_id") + "," +
-                               rs.getString("access_time") + "," +
-                               rs.getString("status") + "," +
-                               rs.getString("action") + "," +
-                               rs.getString("ip_address"));
+                displayLog(rs);
             }
-            
-            System.out.println("Report exported to " + filename);
         } catch (Exception e) {
-            System.out.println("Error exporting report: " + e.getMessage());
+            System.out.println("Error filtering logs by date: " + e.getMessage());
         }
     }
     
+    // Filter logs by outcome (success/failure)
+    public static void filterLogsByOutcome(String status) {
+        String sql = "SELECT * FROM AccessLogs WHERE status = ?";
 
-public static void displayLoginStatistics() {
-    String sql = "SELECT COUNT(*) AS login_count, DATE(access_time) AS login_date " +
-                 "FROM AccessLogs WHERE action = 'Login' AND status = 'Success' " +
-                 "GROUP BY login_date ORDER BY login_date DESC";
-    
-    try (Connection conn = DriverManager.getConnection(DB_URL);
-         PreparedStatement pstmt = conn.prepareStatement(sql);
-         ResultSet rs = pstmt.executeQuery()) {
-        
-        while (rs.next()) {
-            System.out.println("Date: " + rs.getString("login_date") + 
-                               " - Successful Logins: " + rs.getInt("login_count"));
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, status);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (!rs.isBeforeFirst()) {
+                System.out.println("No logs found for the outcome: " + status);
+            }
+
+            while (rs.next()) {
+                displayLog(rs);
+            }
+
+        } catch (Exception e) {
+            System.out.println("Error filtering logs by outcome: " + e.getMessage());
         }
-        
-    } catch (Exception e) {
-        System.out.println("Error displaying login statistics: " + e.getMessage());
     }
-}
 
+    // Method to display log entry
+    private static void displayLog(ResultSet rs) throws SQLException {
+        System.out.println("Log ID: " + rs.getInt("id"));
+        System.out.println("User ID: " + rs.getInt("user_id"));
+        System.out.println("Access Time: " + rs.getString("access_time"));
+        System.out.println("Status: " + rs.getString("status"));
+        System.out.println("Action: " + rs.getString("action"));
+        System.out.println("IP Address: " + rs.getString("ip_address"));
+        System.out.println("----------------------------");
+    }
 }
