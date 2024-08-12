@@ -8,21 +8,55 @@ public class AuthManager {
 
     private static final String DB_URL = "jdbc:sqlite:database/security_logs.db";
 
-    // Method to register a new user
-    public static void registerUser(String username, String password, String role) {
+    // Method to authenticate a user
+    public static String authenticateUser(String username, String password) {
         String hashedPassword = hashPassword(password);
-
-        String sql = "INSERT INTO Users(username, password, role) VALUES(?, ?, ?)";
+        String sql = "SELECT role FROM Users WHERE username = ? AND password = ?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, username);
             pstmt.setString(2, hashedPassword);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getString("role");  // Return the role of the user
+            } else {
+                return null;  // Authentication failed
+            }
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return null;
+        }
+    }
+
+    // Method to register a new user
+    public static void registerUser(String username, String password, String role) {
+        String hashedPassword = hashPassword(password);
+        String checkUserSql = "SELECT COUNT(*) FROM Users WHERE username = ?";
+        String sql = "INSERT INTO Users(username, password, role) VALUES(?, ?, ?)";
+    
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement checkStmt = conn.prepareStatement(checkUserSql);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+    
+            // Check if username already exists
+            checkStmt.setString(1, username);
+            ResultSet rs = checkStmt.executeQuery();
+            if (rs.next() && rs.getInt(1) > 0) {
+                System.out.println("Username already exists. Please choose a different username.");
+                return;
+            }
+    
+            // Proceed with registration
+            pstmt.setString(1, username);
+            pstmt.setString(2, hashedPassword);
             pstmt.setString(3, role);
             pstmt.executeUpdate();
-            System.out.println("User registered successfully");
-
+            System.out.println("User registered successfully.");
+    
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -42,52 +76,7 @@ public class AuthManager {
             return hexString.toString();
 
         } catch (Exception ex) {
-            throw new RuntimeException(ex); 
-        }
-    }
-    public static String getUserRole(String username) {
-        String role = null;
-        String sql = "SELECT role FROM Users WHERE username = ?";
-
-        try (Connection conn = DriverManager.getConnection(DB_URL);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, username);
-            ResultSet rs = pstmt.executeQuery();
-
-            if (rs.next()) {
-                role = rs.getString("role");
-            }
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
-
-        return role;
-    }
-    public static boolean authenticateUser(String username, String password) {
-        String hashedPassword = hashPassword(password);
-        String sql = "SELECT * FROM Users WHERE username = ? AND password = ?";
-
-        try (Connection conn = DriverManager.getConnection(DB_URL);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, username);
-            pstmt.setString(2, hashedPassword);
-
-            ResultSet rs = pstmt.executeQuery();
-
-            // If a record is found, authentication is successful
-            if (rs.next()) {
-                System.out.println("User authenticated successfully");
-                return true;
-            } else {
-                System.out.println("Authentication failed");
-                return false;
-            }
-
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            return false;
+            throw new RuntimeException(ex);
         }
     }
 }
