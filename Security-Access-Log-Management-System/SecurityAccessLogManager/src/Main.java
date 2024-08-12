@@ -65,13 +65,12 @@ public class Main {
                 // Role-Based Access Control (RBAC)
                 if (role.equalsIgnoreCase("Admin")) {
                     System.out.println("Admin Access: You can view logs and manage users.");
-
-                    // Add code here for admin features like viewing logs, managing users, etc.
+                    AdminFeatures.viewAllLogs();
+                    manageUsersMenu(scanner);
 
                 } else if (role.equalsIgnoreCase("User")) {
                     System.out.println("User Access: Limited access to certain features.");
-
-                    // Add code here for user features, restricted access
+                    // Add user functionalities here
 
                 } else {
                     System.out.println("Unknown role. Access restricted.");
@@ -83,5 +82,64 @@ public class Main {
         }
 
         scanner.close();
+    }
+
+    // Function to display and handle user management options for Admins
+    private static void manageUsersMenu(Scanner scanner) {
+        while (true) {
+            System.out.println("\nUser Management:");
+            System.out.println("1. Add User");
+            System.out.println("2. Delete User");
+            System.out.println("3. View All Users");
+            System.out.println("4. Exit User Management");
+            System.out.print("Choose an option: ");
+            
+            int choice;
+            try {
+                choice = scanner.nextInt();
+                scanner.nextLine(); // Clear the buffer
+
+                switch (choice) {
+                    case 1:
+                        System.out.print("Enter username for new user: ");
+                        String username = scanner.nextLine();
+
+                        System.out.print("Enter password for new user: ");
+                        String password = scanner.nextLine();
+
+                        System.out.print("Enter role for new user (User or Admin): ");
+                        String role = scanner.nextLine();
+
+                        AuthManager.registerUser(username, password, role);
+                        System.out.println("User added successfully.");
+                        break;
+
+                    case 2:
+                        System.out.print("Enter username of the user to delete: ");
+                        String usernameToDelete = scanner.nextLine();
+
+                        if (AdminFeatures.deleteUser(usernameToDelete)) {
+                            System.out.println("User deleted successfully.");
+                        } else {
+                            System.out.println("User not found.");
+                        }
+                        break;
+
+                    case 3:
+                        AdminFeatures.viewAllUsers();
+                        break;
+
+                    case 4:
+                        System.out.println("Exiting User Management.");
+                        return; // Exit the menu loop
+
+                    default:
+                        System.out.println("Invalid choice. Please enter a number between 1 and 4.");
+                }
+            } catch (InputMismatchException e) {
+                System.out.println("Invalid input. Please enter a number.");
+                scanner.nextLine(); // Clear the buffer
+            }
+        }
     }
 }
