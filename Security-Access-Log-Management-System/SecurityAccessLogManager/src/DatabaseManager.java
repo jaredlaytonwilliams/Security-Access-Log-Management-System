@@ -43,17 +43,19 @@ public class DatabaseManager {
         }
     }
 
-    public static void logAccessEvent(int userId, String status) {
-        String sql = "INSERT INTO AccessLogs(user_id, status) VALUES(?, ?)";
-
+    public static void logAccessEvent(int userId, String status, String action, String ipAddress) {
+        String sql = "INSERT INTO AccessLogs(user_id, status, action, ip_address) VALUES(?, ?, ?, ?)";
+    
         try (Connection conn = DriverManager.getConnection(DB_URL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
+    
             pstmt.setInt(1, userId);
             pstmt.setString(2, status);
+            pstmt.setString(3, action);
+            pstmt.setString(4, ipAddress);
             pstmt.executeUpdate();
             System.out.println("Access event logged successfully");
-
+    
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
