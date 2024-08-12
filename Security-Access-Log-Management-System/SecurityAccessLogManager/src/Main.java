@@ -59,8 +59,11 @@ public class Main {
             // Authenticate user and retrieve their role
             String role = AuthManager.authenticateUser(username, password);
 
+            int userId = AuthManager.getUserId(username); // Assuming you have a method to get user ID by username
+
             if (role != null) {
                 System.out.println("Access granted. Role: " + role);
+                DatabaseManager.logAccessEvent(userId, "Success", "Login", "127.0.0.1");
 
                 // Role-Based Access Control (RBAC)
                 if (role.equalsIgnoreCase("Admin")) {
@@ -78,6 +81,7 @@ public class Main {
 
             } else {
                 System.out.println("Access denied. Invalid username or password.");
+                DatabaseManager.logAccessEvent(userId, "Failed", "Login", "127.0.0.1"); // Log failed attempt
             }
         }
 
@@ -107,8 +111,17 @@ public class Main {
                         System.out.print("Enter password for new user: ");
                         String password = scanner.nextLine();
 
-                        System.out.print("Enter role for new user (User or Admin): ");
-                        String role = scanner.nextLine();
+                        String role;
+                        while (true) {
+                            System.out.print("Enter role for new user (User or Admin): ");
+                            role = scanner.nextLine();
+
+                            if (role.equalsIgnoreCase("User") || role.equalsIgnoreCase("Admin")) {
+                                break; // Valid role entered, exit loop
+                            } else {
+                                System.out.println("Invalid role. Please enter 'User' or 'Admin'.");
+                            }
+                        }
 
                         AuthManager.registerUser(username, password, role);
                         System.out.println("User added successfully.");
