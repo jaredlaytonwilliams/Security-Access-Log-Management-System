@@ -5,254 +5,239 @@ import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
-        // Initialize the database
-        DatabaseManager.connect();
-        DatabaseManager.createTables();
-
-        // Get the local IP address
-        String ipAddress = "Unknown";
-        try {
-            InetAddress inetAddress = InetAddress.getLocalHost();
-            ipAddress = inetAddress.getHostAddress();
-        } catch (UnknownHostException e) {
-            System.out.println("Error getting IP address: " + e.getMessage());
-        }
+        initializeDatabase();
+        String ipAddress = getLocalIpAddress();
 
         Scanner scanner = new Scanner(System.in);
-        int choice = 0;
+        int choice = getUserChoice(scanner, "Do you want to (1) Register or (2) Login?", 1, 2);
 
+        if (choice == 1) {
+            handleUserRegistration(scanner, ipAddress);
+        } else if (choice == 2) {
+            handleUserLogin(scanner, ipAddress);
+        }
+
+        scanner.close();
+    }
+
+    private static void initializeDatabase() {
+        DatabaseManager.connect();
+        DatabaseManager.createTables();
+    }
+
+    private static String getLocalIpAddress() {
+        try {
+            InetAddress inetAddress = InetAddress.getLocalHost();
+            return inetAddress.getHostAddress();
+        } catch (UnknownHostException e) {
+            System.out.println("Error getting IP address: " + e.getMessage());
+            return "Unknown";
+        }
+    }
+
+    private static int getUserChoice(Scanner scanner, String message, int... validChoices) {
+        int choice = 0;
         while (true) {
-            System.out.println("Do you want to (1) Register or (2) Login?");
+            System.out.println(message);
             try {
                 choice = scanner.nextInt();
                 scanner.nextLine(); // Clear the buffer
 
-                if (choice == 1 || choice == 2) {
-                    break; // Exit the loop if a valid choice is made
-                } else {
-                    System.out.println("Invalid choice. Please enter 1 or 2.");
+                for (int validChoice : validChoices) {
+                    if (choice == validChoice) {
+                        return choice;
+                    }
                 }
+                System.out.println("Invalid choice. Please enter " + formatChoices(validChoices) + ".");
             } catch (InputMismatchException e) {
                 System.out.println("Invalid input. Please enter a number.");
                 scanner.nextLine(); // Clear the buffer
             }
         }
+    }
 
-        if (choice == 1) {
-            // Register a new user
-            System.out.print("Enter username for registration: ");
-            String username = scanner.nextLine();
-        
-            System.out.print("Enter password for registration: ");
-            String password = scanner.nextLine();
-        
-            String role;
-            while (true) {
-                System.out.print("Enter role for registration (User or Admin): ");
-                role = scanner.nextLine();
-        
-                if (role.equalsIgnoreCase("User") || role.equalsIgnoreCase("Admin")) {
-                    break; // Valid role entered, exit loop
-                } else {
-                    System.out.println("Invalid role. Please enter 'User' or 'Admin'.");
-                }
-            }
-        
-            // Register user and get the user ID
-            int userId = AuthManager.registerUser(username, password, role);
-            if (userId != -1) {
-                // Log the registration
-                DatabaseManager.logAccessEvent(userId, "Success", "Registration", ipAddress);
-        
-                // Automatically log the user in
-                System.out.println("Access granted. Role: " + role);
-                DatabaseManager.logAccessEvent(userId, "Success", "Login", ipAddress);
-        
-                // Proceed with role-based access control (RBAC)
-                if (role.equalsIgnoreCase("Admin")) {
-                    System.out.println("Admin Access: You can view logs and manage users.");
-                    AdminFeatures.viewAllLogs();
-                    manageUsersMenu(scanner, username, ipAddress);
-        
-                } else if (role.equalsIgnoreCase("User")) {
-                    System.out.println("User Access: Limited access to certain features.");
-                    // Add user functionalities here
-        
-                } else {
-                    System.out.println("Unknown role. Access restricted.");
-                }
-            }
-        } else if (choice == 2) {
-            // User login process
-            System.out.print("Enter username: ");
-            String username = scanner.nextLine();
-
-            System.out.print("Enter password: ");
-            String password = scanner.nextLine();
-
-            // Authenticate user and retrieve their role
-            String role = AuthManager.authenticateUser(username, password);
-
-            int userId = AuthManager.getUserId(username);
-
-            if (role != null) {
-                System.out.println("Access granted. Role: " + role);
-                DatabaseManager.logAccessEvent(userId, "Success", "Login", ipAddress);
-
-                // Role-Based Access Control (RBAC)
-                if (role.equalsIgnoreCase("Admin")) {
-                    System.out.println("Admin Access: You can view logs and manage users.");
-                    manageUsersMenu(scanner, username, ipAddress);  // Pass username and ipAddress
-
-                } else if (role.equalsIgnoreCase("User")) {
-                    System.out.println("User Access: Limited access to certain features.");
-                    // Add user functionalities here
-
-                } else {
-                    System.out.println("Unknown role. Access restricted.");
-                }
-
-            } else {
-                System.out.println("Access denied. Invalid username or password.");
-                DatabaseManager.logAccessEvent(userId, "Failed", "Login", ipAddress); // Log failed attempt
+    private static String formatChoices(int... validChoices) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < validChoices.length; i++) {
+            sb.append(validChoices[i]);
+            if (i < validChoices.length - 1) {
+                sb.append(" or ");
             }
         }
-
-        scanner.close();
+        return sb.toString();
     }
-    
 
-    // Function to display and handle user management options for Admins
+    private static void handleUserRegistration(Scanner scanner, String ipAddress) {
+        String username = getInput(scanner, "Enter username for registration: ");
+        String password = getInput(scanner, "Enter password for registration: ");
+        String role = getRole(scanner);
+
+        int userId = AuthManager.registerUser(username, password, role);
+        if (userId != -1) {
+            DatabaseManager.logAccessEvent(userId, "Success", "Registration", ipAddress);
+            handleUserLoginFlow(scanner, username, role, userId, ipAddress);
+        }
+    }
+
+    private static void handleUserLogin(Scanner scanner, String ipAddress) {
+        String username = getInput(scanner, "Enter username: ");
+        String password = getInput(scanner, "Enter password: ");
+        String role = AuthManager.authenticateUser(username, password);
+
+        int userId = AuthManager.getUserId(username);
+
+        if (role != null) {
+            DatabaseManager.logAccessEvent(userId, "Success", "Login", ipAddress);
+            handleUserLoginFlow(scanner, username, role, userId, ipAddress);
+        } else {
+            System.out.println("Access denied. Invalid username or password.");
+            DatabaseManager.logAccessEvent(userId, "Failed", "Login", ipAddress);
+        }
+    }
+
+    private static void handleUserLoginFlow(Scanner scanner, String username, String role, int userId, String ipAddress) {
+        System.out.println("Access granted. Role: " + role);
+        if (role.equalsIgnoreCase("Admin")) {
+            manageUsersMenu(scanner, username, ipAddress);
+        } else if (role.equalsIgnoreCase("User")) {
+            manageUserOptions(scanner, username);
+        } else {
+            System.out.println("Unknown role. Access restricted.");
+        }
+    }
+
+    private static void manageUserOptions(Scanner scanner, String username) {
+        while (true) {
+            int userChoice = getUserChoice(scanner, "\n1. View My Logs\n2. View My Login Statistics\n3. Exit", 1, 2, 3);
+            switch (userChoice) {
+                case 1:
+                    UserFeatures.viewOwnLogs(username);
+                    break;
+                case 2:
+                    UserFeatures.viewLoginStatistics(username);
+                    break;
+                case 3:
+                    System.out.println("Exiting.");
+                    return;
+            }
+        }
+    }
+
     private static void manageUsersMenu(Scanner scanner, String username, String ipAddress) {
-    int userId = AuthManager.getUserId(username); // Get the actual user ID for the logged-in user
+        int userId = AuthManager.getUserId(username);
 
-    while (true) {
-        System.out.println("\nUser Management:");
-        System.out.println("1. Add User");
-        System.out.println("2. Delete User");
-        System.out.println("3. View All Users");
-
-        System.out.println("\nAccess Logs:");
-        System.out.println("4. View All Access Logs");
-        System.out.println("5. Generate Report by Date");
-        System.out.println("6. Generate Report by User");
-        System.out.println("7. Generate Report by Action Type");
-        System.out.println("8. Generate Report by Outcome (Success/Failure)");
-
-        System.out.println("\nStatistics:");
-        System.out.println("9. Display Login Statistics");
-        System.out.println("10. Display Most Active Users");
-
-        System.out.println("\n11. Exit");
-
-        System.out.print("Choose an option: ");
-
-        int choice;
-        try {
-            choice = scanner.nextInt();
-            scanner.nextLine(); // Clear the buffer
+        while (true) {
+            int choice = getUserChoice(scanner,
+                "\nUser Management:\n1. Add User\n2. Delete User\n3. View All Users" +
+                "\n\nAccess Logs:\n4. View All Access Logs\n5. Generate Report by Date\n6. Generate Report by User" +
+                "\n7. Generate Report by Action Type\n8. Generate Report by Outcome (Success/Failure)" +
+                "\n\nStatistics:\n9. Display Login Statistics\n10. Display Most Active Users" +
+                "\n\n11. Exit", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
 
             switch (choice) {
                 case 1:
-                    System.out.print("Enter username for new user: ");
-                    String newUsername = scanner.nextLine();
-
-                    System.out.print("Enter password for new user: ");
-                    String password = scanner.nextLine();
-
-                    String role;
-                    while (true) {
-                        System.out.print("Enter role for new user (User or Admin): ");
-                        role = scanner.nextLine();
-
-                        if (role.equalsIgnoreCase("User") || role.equalsIgnoreCase("Admin")) {
-                            break; // Valid role entered, exit loop
-                        } else {
-                            System.out.println("Invalid role. Please enter 'User' or 'Admin'.");
-                        }
-                    }
-
-                    AuthManager.registerUser(newUsername, password, role);
-                    System.out.println("User added successfully.");
-                    DatabaseManager.logAccessEvent(userId, "Success", "Add User", ipAddress);
+                    handleAddUser(scanner, userId, ipAddress);
                     break;
-
                 case 2:
-                    System.out.print("Enter username of the user to delete: ");
-                    String usernameToDelete = scanner.nextLine();
-
-                    if (AdminFeatures.deleteUser(usernameToDelete)) {
-                        System.out.println("User deleted successfully.");
-                        DatabaseManager.logAccessEvent(userId, "Success", "Delete User", ipAddress);
-                    } else {
-                        System.out.println("User not found.");
-                        DatabaseManager.logAccessEvent(userId, "Failed", "Delete User", ipAddress);
-                    }
+                    handleDeleteUser(scanner, userId, ipAddress);
                     break;
-
                 case 3:
                     AdminFeatures.viewAllUsers();
                     DatabaseManager.logAccessEvent(userId, "Success", "View All Users", ipAddress);
                     break;
-
                 case 4:
                     AdminFeatures.viewAllLogs();
                     DatabaseManager.logAccessEvent(userId, "Success", "View Access Logs", ipAddress);
                     break;
-
-                    case 5:
-                    System.out.print("Enter start date (YYYY-MM-DD): ");
-                    String startDate = scanner.nextLine();
-                    System.out.print("Enter end date (YYYY-MM-DD): ");
-                    String endDate = scanner.nextLine();
-                    AdminFeatures.filterLogsByDate(startDate, endDate);
-                    DatabaseManager.logAccessEvent(userId, "Success", "Generate Report by Date", ipAddress);
-                    break;                
-
+                case 5:
+                    handleGenerateReportByDate(scanner, userId, ipAddress);
+                    break;
                 case 6:
-                    System.out.print("Enter username to filter logs: ");
-                    String usernameFilter = scanner.nextLine();
-                    AdminFeatures.filterLogsByUser(usernameFilter);
-                    DatabaseManager.logAccessEvent(userId, "Success", "Generate Report by User", ipAddress);
+                    handleGenerateReportByUser(scanner, userId, ipAddress);
                     break;
-
                 case 7:
-                    System.out.print("Enter action type to filter logs (e.g., Login, Logout): ");
-                    String actionType = scanner.nextLine();
-                    AdminFeatures.filterLogsByActionType(actionType);
-                    DatabaseManager.logAccessEvent(userId, "Success", "Generate Report by Action Type", ipAddress);
+                    handleGenerateReportByActionType(scanner, userId, ipAddress);
                     break;
-
                 case 8:
-                    System.out.print("Enter outcome to filter logs (Success/Failure): ");
-                    String outcome = scanner.nextLine();
-                    AdminFeatures.filterLogsByOutcome(outcome);
-                    DatabaseManager.logAccessEvent(userId, "Success", "Generate Report by Outcome", ipAddress);
+                    handleGenerateReportByOutcome(scanner, userId, ipAddress);
                     break;
-
-                    case 9:
+                case 9:
                     AdminFeatures.displayLoginStatistics();
                     DatabaseManager.logAccessEvent(userId, "Success", "Display Login Statistics", ipAddress);
                     break;
-                
-                // Option 10: Display Most Active Users
                 case 10:
                     AdminFeatures.displayMostActiveUsers();
                     DatabaseManager.logAccessEvent(userId, "Success", "Display Most Active Users", ipAddress);
                     break;
-
                 case 11:
                     System.out.println("Exiting User Management.");
                     DatabaseManager.logAccessEvent(userId, "Success", "Exit User Management", ipAddress);
-                    return; // Exit the menu loop
-
-                default:
-                    System.out.println("Invalid choice. Please enter a number between 1 and 11.");
+                    return;
             }
-        } catch (InputMismatchException e) {
-            System.out.println("Invalid input. Please enter a number.");
-            scanner.nextLine(); // Clear the buffer
         }
     }
-}
+
+    private static void handleAddUser(Scanner scanner, int userId, String ipAddress) {
+        String newUsername = getInput(scanner, "Enter username for new user: ");
+        String password = getInput(scanner, "Enter password for new user: ");
+        String role = getRole(scanner);
+
+        AuthManager.registerUser(newUsername, password, role);
+        System.out.println("User added successfully.");
+        DatabaseManager.logAccessEvent(userId, "Success", "Add User", ipAddress);
+    }
+
+    private static void handleDeleteUser(Scanner scanner, int userId, String ipAddress) {
+        String usernameToDelete = getInput(scanner, "Enter username of the user to delete: ");
+        if (AdminFeatures.deleteUser(usernameToDelete)) {
+            System.out.println("User deleted successfully.");
+            DatabaseManager.logAccessEvent(userId, "Success", "Delete User", ipAddress);
+        } else {
+            System.out.println("User not found.");
+            DatabaseManager.logAccessEvent(userId, "Failed", "Delete User", ipAddress);
+        }
+    }
+
+    private static void handleGenerateReportByDate(Scanner scanner, int userId, String ipAddress) {
+        String startDate = getInput(scanner, "Enter start date (YYYY-MM-DD): ");
+        String endDate = getInput(scanner, "Enter end date (YYYY-MM-DD): ");
+        AdminFeatures.filterLogsByDate(startDate, endDate);
+        DatabaseManager.logAccessEvent(userId, "Success", "Generate Report by Date", ipAddress);
+    }
+
+    private static void handleGenerateReportByUser(Scanner scanner, int userId, String ipAddress) {
+        String usernameFilter = getInput(scanner, "Enter username to filter logs: ");
+        AdminFeatures.filterLogsByUser(usernameFilter);
+        DatabaseManager.logAccessEvent(userId, "Success", "Generate Report by User", ipAddress);
+    }
+
+    private static void handleGenerateReportByActionType(Scanner scanner, int userId, String ipAddress) {
+        String actionType = getInput(scanner, "Enter action type to filter logs (e.g., Login, Logout): ");
+        AdminFeatures.filterLogsByActionType(actionType);
+        DatabaseManager.logAccessEvent(userId, "Success", "Generate Report by Action Type", ipAddress);
+    }
+
+    private static void handleGenerateReportByOutcome(Scanner scanner, int userId, String ipAddress) {
+        String outcome = getInput(scanner, "Enter outcome to filter logs (Success/Failure): ");
+        AdminFeatures.filterLogsByOutcome(outcome);
+        DatabaseManager.logAccessEvent(userId, "Success", "Generate Report by Outcome", ipAddress);
+    }
+
+    private static String getInput(Scanner scanner, String prompt) {
+        System.out.print(prompt);
+        return scanner.nextLine();
+    }
+
+    private static String getRole(Scanner scanner) {
+        String role;
+        while (true) {
+            System.out.print("Enter role for registration (User or Admin): ");
+            role = scanner.nextLine();
+            if (role.equalsIgnoreCase("User") || role.equalsIgnoreCase("Admin")) {
+                return role;
+            } else {
+                System.out.println("Invalid role. Please enter 'User' or 'Admin'.");
+            }
+        }
+    }
 }
