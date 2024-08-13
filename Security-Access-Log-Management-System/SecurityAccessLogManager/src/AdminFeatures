@@ -3,6 +3,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import javax.swing.JOptionPane;
 
 public class AdminFeatures {
 
@@ -10,7 +11,11 @@ public class AdminFeatures {
 
     // Method to view all access logs
     public static void viewAllLogs() {
-        executeQuery("SELECT * FROM AccessLogs", rs -> displayLog(rs));
+        StringBuilder logs = new StringBuilder();
+        executeQuery("SELECT * FROM AccessLogs", rs -> {
+            logs.append(displayLog(rs)).append("\n");
+        });
+        JOptionPane.showMessageDialog(null, logs.toString(), "All Access Logs", JOptionPane.INFORMATION_MESSAGE);
     }
 
     // Method to delete a user by username
@@ -20,19 +25,33 @@ public class AdminFeatures {
 
     // Method to view all users
     public static void viewAllUsers() {
+        StringBuilder users = new StringBuilder();
         executeQuery("SELECT * FROM Users", rs -> {
-            System.out.println("User ID: " + rs.getInt("id"));
-            System.out.println("Username: " + rs.getString("username"));
-            System.out.println("Role: " + rs.getString("role"));
-            System.out.println("----------------------------");
+            users.append("User ID: ").append(rs.getInt("id"))
+                .append(", Username: ").append(rs.getString("username"))
+                .append(", Role: ").append(rs.getString("role"))
+                .append("\n");
         });
+        JOptionPane.showMessageDialog(null, users.toString(), "All Users", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    public static ResultSet getAllUsers() {
+        String sql = "SELECT * FROM Users";
+        try {
+            Connection conn = DriverManager.getConnection(DB_URL);
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            return pstmt.executeQuery();
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(null, "Error retrieving users: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+    }
+    
     // Method to add a new user
     public static void addUser(String username, String password, String role) {
         String hashedPassword = AuthManager.hashPassword(password);
         executeUpdate("INSERT INTO Users(username, password, role) VALUES(?, ?, ?)", username, hashedPassword, role);
-        System.out.println("User added successfully");
+        JOptionPane.showMessageDialog(null, "User added successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
     }
 
     // Method to update a user's role
@@ -42,44 +61,69 @@ public class AdminFeatures {
 
     // Filter logs by user
     public static void filterLogsByUser(String username) {
+        StringBuilder logs = new StringBuilder();
         String sql = "SELECT * FROM AccessLogs WHERE user_id = (SELECT id FROM Users WHERE username = ?)";
-        executeQuery(sql, rs -> displayLog(rs), username);
+        executeQuery(sql, rs -> logs.append(displayLog(rs)).append("\n"), username);
+        JOptionPane.showMessageDialog(null, logs.toString(), "Logs Filtered by User", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    // Filter logs by action type
     public static void filterLogsByActionType(String action) {
-        executeQuery("SELECT * FROM AccessLogs WHERE action = ?", rs -> displayLog(rs), action);
+        StringBuilder logs = new StringBuilder();
+        String sql = "SELECT * FROM AccessLogs WHERE UPPER(action) = UPPER(?)";
+        executeQuery(sql, rs -> logs.append(displayLog(rs)).append("\n"), action);
+        JOptionPane.showMessageDialog(null, logs.toString(), "Logs Filtered by Action Type", JOptionPane.INFORMATION_MESSAGE);
     }
 
     public static void displayLoginStatistics() {
-        String sql = "SELECT COUNT(*) AS login_count, DATE(access_time) AS login_date " +
-                     "FROM AccessLogs WHERE action = 'Login' AND status = 'Success' " +
-                     "GROUP BY login_date ORDER BY login_date DESC";
+        String sql = "SELECT DATE(access_time) AS login_date, " +
+                     "SUM(CASE WHEN status = 'Success' THEN 1 ELSE 0 END) AS successful_logins, " +
+                     "SUM(CASE WHEN status = 'Failed' THEN 1 ELSE 0 END) AS failed_logins " +
+                     "FROM AccessLogs " +
+                     "WHERE action = 'Login' " +
+                     "GROUP BY login_date " +
+                     "ORDER BY login_date DESC";
+        
+        StringBuilder stats = new StringBuilder();
         executeQuery(sql, rs -> {
-            System.out.println("Date: " + rs.getString("login_date") + 
-                               " - Successful Logins: " + rs.getInt("login_count"));
+            stats.append("Date: ").append(rs.getString("login_date"))
+                 .append(" - Successful Logins: ").append(rs.getInt("successful_logins"))
+                 .append(" - Failed Logins: ").append(rs.getInt("failed_logins"))
+                 .append("\n");
         });
+        JOptionPane.showMessageDialog(null, stats.toString(), "Login Statistics", JOptionPane.INFORMATION_MESSAGE);
     }
     
     public static void displayMostActiveUsers() {
+        StringBuilder users = new StringBuilder();
         String sql = "SELECT Users.username, COUNT(*) AS login_count " +
                      "FROM AccessLogs " +
                      "JOIN Users ON AccessLogs.user_id = Users.id " +
                      "WHERE action = 'Login' AND status = 'Success' " +
                      "GROUP BY Users.username ORDER BY login_count DESC";
         executeQuery(sql, rs -> {
-            System.out.println("Username: " + rs.getString("username") + 
-                               " - Successful Logins: " + rs.getInt("login_count"));
+            users.append("Username: ").append(rs.getString("username"))
+                 .append(" - Successful Logins: ").append(rs.getInt("login_count"))
+                 .append("\n");
         });
+        JOptionPane.showMessageDialog(null, users.toString(), "Most Active Users", JOptionPane.INFORMATION_MESSAGE);
     }
     
     public static void filterLogsByDate(String startDate, String endDate) {
-        executeQuery("SELECT * FROM AccessLogs WHERE access_time BETWEEN ? AND ?", rs -> displayLog(rs), startDate, endDate);
+        StringBuilder logs = new StringBuilder();
+        executeQuery("SELECT * FROM AccessLogs WHERE access_time BETWEEN ? AND ?", rs -> {
+            logs.append(displayLog(rs)).append("\n");
+        }, startDate, endDate);
+        JOptionPane.showMessageDialog(null, logs.toString(), "Logs Filtered by Date", JOptionPane.INFORMATION_MESSAGE);
     }
     
-    // Filter logs by outcome (success/failure)
-    public static void filterLogsByOutcome(String status) {
-        executeQuery("SELECT * FROM AccessLogs WHERE status = ?", rs -> displayLog(rs), status);
+    public static void filterLogsByOutcome(String outcome) {
+        StringBuilder logs = new StringBuilder();
+        // Convert the outcome to lower case for case-insensitive comparison
+        String lowerCaseOutcome = outcome.toLowerCase();
+
+        String sql = "SELECT * FROM AccessLogs WHERE LOWER(status) = ?";
+        executeQuery(sql, rs -> logs.append(displayLog(rs)).append("\n"), lowerCaseOutcome);
+        JOptionPane.showMessageDialog(null, logs.toString(), "Logs Filtered by Outcome", JOptionPane.INFORMATION_MESSAGE);
     }
 
     // Helper methods
@@ -92,7 +136,7 @@ public class AdminFeatures {
             int rowsAffected = pstmt.executeUpdate();
             return rowsAffected > 0;
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            JOptionPane.showMessageDialog(null, "Error executing update: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             return false;
         }
     }
@@ -105,25 +149,24 @@ public class AdminFeatures {
             }
             ResultSet rs = pstmt.executeQuery();
             if (!rs.isBeforeFirst()) {
-                System.out.println("No logs found.");
+                JOptionPane.showMessageDialog(null, "No logs found.", "Information", JOptionPane.INFORMATION_MESSAGE);
             } else {
                 while (rs.next()) {
                     handler.handle(rs);
                 }
             }
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            JOptionPane.showMessageDialog(null, "Error retrieving data: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private static void displayLog(ResultSet rs) throws SQLException {
-        System.out.println("Log ID: " + rs.getInt("id"));
-        System.out.println("User ID: " + rs.getInt("user_id"));
-        System.out.println("Access Time: " + rs.getString("access_time"));
-        System.out.println("Status: " + rs.getString("status"));
-        System.out.println("Action: " + rs.getString("action"));
-        System.out.println("IP Address: " + rs.getString("ip_address"));
-        System.out.println("----------------------------");
+    private static String displayLog(ResultSet rs) throws SQLException {
+        return "Log ID: " + rs.getInt("id") +
+               ", User ID: " + rs.getInt("user_id") +
+               ", Access Time: " + rs.getString("access_time") +
+               ", Status: " + rs.getString("status") +
+               ", Action: " + rs.getString("action") +
+               ", IP Address: " + rs.getString("ip_address");
     }
 
     @FunctionalInterface
