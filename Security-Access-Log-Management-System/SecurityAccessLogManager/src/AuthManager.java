@@ -13,22 +13,47 @@ public class AuthManager {
     // Method to authenticate a user
     public static String authenticateUser(String username, String password) {
         String hashedPassword = hashPassword(password);
-        return querySingleResult("SELECT role FROM Users WHERE username = ? AND password = ?", rs -> rs.getString("role"), username, hashedPassword);
+        String role = querySingleResult("SELECT role FROM Users WHERE username = ? AND password = ?", 
+                                         rs -> rs.getString("role"), username, hashedPassword);
+        
+        if (role == null) {
+            int userId = getUserId(username);
+            if (userId != -1) {
+                DatabaseManager.logAccessEvent(userId, "Failed", "Login", "Unknown IP");
+            }
+        }
+        
+        return role;
     }
 
-    // Method to register a new user
     public static int registerUser(String username, String password, String role) {
         String hashedPassword = hashPassword(password);
         if (usernameExists(username)) {
             System.out.println("Username already exists. Please choose a different username.");
+            int userId = getUserId(username);
+            if (userId != -1) {
+                DatabaseManager.logAccessEvent(userId, "Failed", "Registration", "Unknown IP");
+            }
             return -1;
         }
+    
         String sql = "INSERT INTO Users(username, password, role) VALUES(?, ?, ?)";
-        return executeUpdateAndGetId(sql, username, hashedPassword, role);
+        int userId = executeUpdateAndGetId(sql, username, hashedPassword, role);
+    
+        if (userId == -1) {
+            DatabaseManager.logAccessEvent(userId, "Failed", "Registration", "Unknown IP");
+        }
+    
+        return userId;
     }
 
     public static int getUserId(String username) {
-        return querySingleResult("SELECT id FROM Users WHERE username = ?", rs -> rs.getInt("id"), username);
+        Integer userId = querySingleResult("SELECT id FROM Users WHERE username = ?", rs -> rs.getInt("id"), username);
+        if (userId == null) {
+            System.out.println("User not found: " + username);
+            return -1; // or any other error code you prefer
+        }
+        return userId;
     }
     
     // Simple method to hash passwords using SHA-256
